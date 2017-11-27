@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Cornice Swagger 2.0 documentor"""
 import warnings
 
@@ -7,6 +8,7 @@ import six
 from cornice_swagger.util import body_schema_transformer, merge_dicts, trim
 from cornice_swagger.converters import (TypeConversionDispatcher as TypeConverter,
                                         ParameterConversionDispatcher as ParameterConverter)
+from cornice_swagger import settings
 
 
 class CorniceSwaggerException(Exception):
@@ -321,7 +323,7 @@ class CorniceSwagger(object):
     """Provide a default list or a callable that takes a cornice service and
     the method name (e.g. GET) and returns a list of OpenAPI security policies."""
 
-    summary_docstrings = False
+    summary_docstrings = True
     """Enable extracting operation summaries from view docstrings."""
 
     ignore_methods = ['HEAD', 'OPTIONS']
@@ -604,10 +606,18 @@ class CorniceSwagger(object):
                 view_ = getattr(ob, view.lower())
                 docstring = trim(view_.__doc__)
         else:
-            docstring = trim(view.__doc__)
+            # trim() breaks non-ASCII symbols & indentation,
+            # which is important in RST format, in which project's
+            # docstrings are formatted.
+            # docstring = trim(view_.__doc__)
+            docstring = view.__doc__
 
         if docstring and self.summary_docstrings:
-            op['summary'] = docstring
+            op['description'] = docstring
+            if len(docstring) > settings.LONG_DOCSTRING_LENGTH:
+                op['summary'] = docstring[:settings.LONG_DOCSTRING_LENGTH]
+            else:
+                op['summary'] = docstring
 
         # Get response definitions
         if 'response_schemas' in args:
